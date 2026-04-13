@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import Link from 'next/link';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AppContext } from '@/components/GlobalWrapper';
 import { MapPin, Banknote, CheckCircle2, ChevronRight, ShieldCheck, GraduationCap, Eye } from 'lucide-react';
+import Image from 'next/image';
 
 const RevealOnScroll = ({ children, className = "" }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -51,13 +52,13 @@ export default function HomePage() {
   useEffect(() => {
     if (!db) return;
     const postsRef = collection(db, 'blogPosts');
-    const unsubscribe = onSnapshot(postsRef, (snapshot) => {
-      const loadedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // СОРТУВАННЯ ЖОРСТКО ЗА ТЕКСТОВОЮ ДАТОЮ З ПОЛЯ!
-      loadedPosts.sort((a, b) => parseDate(b.date) - parseDate(a.date));
-      setBlogPosts(loadedPosts.slice(0, 3)); 
-    }, (error) => console.error("Firestore error:", error));
-    return () => unsubscribe();
+    getDocs(postsRef)
+      .then((snapshot) => {
+        const loadedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        loadedPosts.sort((a, b) => parseDate(b.date) - parseDate(a.date));
+        setBlogPosts(loadedPosts.slice(0, 3));
+      })
+      .catch((error) => console.error('Firestore error:', error));
   }, []);
 
   return (
@@ -65,7 +66,14 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative bg-slate-900 text-white overflow-hidden">
         <div className="absolute inset-0">
-          <img src="https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80" alt="Зварювальник" className="w-full h-full object-cover opacity-20 scale-105 animate-[pulse_15s_ease-in-out_infinite]" />
+          <Image
+            fill
+            src="https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80"
+            alt="Зварювальник"
+            className="object-cover opacity-20 scale-105 animate-[pulse_15s_ease-in-out_infinite]"
+            priority
+            sizes="100vw"
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/90 to-transparent"></div>
         </div>
         
@@ -133,8 +141,14 @@ export default function HomePage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <Link href={l('/vacancies')} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-2xl transition-all flex flex-col md:flex-row group">
-                <div className="md:w-2/5 relative overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=80" alt="Зварювальник MIG/MAG" className="w-full h-48 md:h-full object-cover bg-gray-200 transition-transform duration-700 group-hover:scale-110" />
+                <div className="md:w-2/5 relative overflow-hidden h-48 md:h-full">
+                  <Image
+                    fill
+                    src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=80"
+                    alt="Зварювальник MIG/MAG"
+                    className="object-cover bg-gray-200 transition-transform duration-700 group-hover:scale-110"
+                    sizes="(max-width: 768px) 100vw, 40vw"
+                  />
                   <div className="absolute top-4 left-4 bg-yellow-500 text-black font-extrabold px-3 py-1 rounded shadow">HOT</div>
                 </div>
                 <div className="p-6 md:w-3/5 flex flex-col justify-between">
@@ -159,8 +173,14 @@ export default function HomePage() {
               </Link>
 
               <Link href={l('/vacancies')} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-2xl transition-all flex flex-col md:flex-row group">
-                <div className="md:w-2/5 relative bg-slate-200 flex items-center justify-center overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1581092334651-ddf26d9a09d0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Слюсар" className="w-full h-48 md:h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <div className="md:w-2/5 relative overflow-hidden h-48 md:h-full">
+                  <Image
+                    fill
+                    src="https://images.unsplash.com/photo-1581092334651-ddf26d9a09d0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+                    alt="Слюсар"
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    sizes="(max-width: 768px) 100vw, 40vw"
+                  />
                 </div>
                 <div className="p-6 md:w-3/5 flex flex-col justify-between">
                   <div>
@@ -211,7 +231,13 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="hidden md:block md:w-1/3 p-6 relative">
-                  <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Навчання зварювальників" className="rounded-2xl border-4 border-white/20 shadow-2xl transform rotate-3 object-cover scale-125 -ml-8 origin-center z-20 relative transition-transform duration-700 group-hover:rotate-6 group-hover:scale-110" />
+                  <Image
+                    src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
+                    alt="Навчання зварювальників"
+                    width={600}
+                    height={700}
+                    className="rounded-2xl border-4 border-white/20 shadow-2xl transform rotate-3 object-cover scale-125 -ml-8 origin-center z-20 relative transition-transform duration-700 group-hover:rotate-6 group-hover:scale-110"
+                  />
                 </div>
               </div>
             </Link>
@@ -237,7 +263,13 @@ export default function HomePage() {
                 {blogPosts.map((post) => (
                   <Link href={l(`/blog/${post.id}`)} key={post.id} className="bg-white rounded-2xl border border-gray-200 hover:border-yellow-500 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group flex flex-col overflow-hidden">
                     <div className="h-48 overflow-hidden relative">
-                       <img src={post.image} alt={getPostText(post, 'title')} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                       <Image
+                       fill
+                       src={post.image}
+                       alt={getPostText(post, 'title')}
+                       className="object-cover transition-transform duration-700 group-hover:scale-110"
+                       sizes="(max-width: 768px) 100vw, 33vw"
+                     />
                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </div>
                     <div className="p-6 flex flex-col flex-grow">

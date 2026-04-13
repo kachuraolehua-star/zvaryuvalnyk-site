@@ -1,6 +1,7 @@
 import "./globals.css";
 
 export default function RootLayout({ children }) {
-  // Весь HTML и метатеги теперь генерируются динамически в языковых папках
+  // Дочерние layouts ([lang]/layout.js, admin/layout.js) переопределяют
+  // этот html/body своими тегами — suppresHydrationWarning убирает предупреждение.
   return children;
 }

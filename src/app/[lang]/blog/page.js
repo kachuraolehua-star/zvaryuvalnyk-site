@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import Link from 'next/link';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AppContext } from '@/components/GlobalWrapper';
 import { ChevronRight, Eye } from 'lucide-react';
+import Image from 'next/image';
 
 // МАГІЯ: ФУНКЦІЯ ПЕРЕТВОРЕННЯ ДАТИ (ДД.ММ.РРРР -> ЧАС ДЛЯ СОРТУВАННЯ)
 const parseDate = (dateStr) => {
@@ -29,14 +30,17 @@ export default function BlogIndexPage() {
   useEffect(() => {
     if (!db) return;
     const postsRef = collection(db, 'blogPosts');
-    const unsubscribe = onSnapshot(postsRef, (snapshot) => {
-      const loadedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // СОРТУВАННЯ ЖОРСТКО ЗА ТЕКСТОВОЮ ДАТОЮ З ПОЛЯ!
-      loadedPosts.sort((a, b) => parseDate(b.date) - parseDate(a.date));
-      setBlogPosts(loadedPosts); 
-      setLoading(false);
-    }, (error) => console.error("Firestore error:", error));
-    return () => unsubscribe();
+    getDocs(postsRef)
+      .then((snapshot) => {
+        const loadedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        loadedPosts.sort((a, b) => parseDate(b.date) - parseDate(a.date));
+        setBlogPosts(loadedPosts);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Firestore error:', error);
+        setLoading(false);
+      });
   }, []);
 
   return (
@@ -60,7 +64,13 @@ export default function BlogIndexPage() {
             {blogPosts.map((post) => (
               <Link href={l(`/blog/${post.id}`)} key={post.id} className="bg-white rounded-2xl border border-gray-200 hover:border-yellow-500 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group flex flex-col overflow-hidden">
                 <div className="h-48 overflow-hidden relative">
-                   <img src={post.image} alt={getPostText(post, 'title')} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                   <Image
+                   fill
+                   src={post.image}
+                   alt={getPostText(post, 'title')}
+                   className="object-cover transition-transform duration-700 group-hover:scale-110"
+                   sizes="(max-width: 768px) 100vw, 33vw"
+                 />
                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
                 <div className="p-6 flex flex-col flex-grow">

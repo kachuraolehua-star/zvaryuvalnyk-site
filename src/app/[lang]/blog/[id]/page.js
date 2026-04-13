@@ -7,6 +7,7 @@ import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AppContext } from '@/components/GlobalWrapper';
 import { ChevronRight, Eye } from 'lucide-react';
+import Image from 'next/image';
 
 export default function BlogPost() {
   const { id } = useParams(); 
@@ -72,7 +73,14 @@ export default function BlogPost() {
         
         <article className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100">
           <div className="h-64 md:h-96 w-full relative">
-            <img src={post.image || "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=80"} alt={getPostText(post, 'title')} className="w-full h-full object-cover" />
+            <Image
+              fill
+              src={post.image || "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=80"}
+              alt={getPostText(post, 'title')}
+              className="object-cover"
+              priority
+              sizes="(max-width: 896px) 100vw, 896px"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
           </div>
           

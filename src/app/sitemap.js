@@ -1,66 +1,63 @@
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-// МАГИЯ ЗДЕСЬ: Отключаем кэширование, чтобы Sitemap всегда отдавал свежие данные из базы!
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function sitemap() {
   const baseUrl = 'https://zvaryuvalnyk.xyz';
-  
-  const locales = ['pl', 'ru', 'en']; 
-  const staticRoutes = ['', '/vacancies', '/training', '/blog'];
-  
-  let allPages = [];
 
-  // 1. УКРАИНСКИЕ страницы (без префиксов)
-  staticRoutes.forEach(route => {
-    allPages.push({
-      url: `${baseUrl}${route}`,
-      lastModified: new Date(),
-      changeFrequency: route === '' ? 'weekly' : 'monthly',
-      priority: route === '' ? 1 : 0.8,
-    });
+  // Все 4 локали. uk — без префикса в URL, остальные с /pl, /ru, /en
+  const locales = ['uk', 'pl', 'ru', 'en'];
+  const staticRoutes = ['', '/vacancies', '/training', '/blog'];
+
+  // Хелпер: строит URL для конкретной локали и маршрута
+  const buildUrl = (locale, route) =>
+    locale === 'uk' ? `${baseUrl}${route}` : `${baseUrl}/${locale}${route}`;
+
+  // Хелпер: строит объект alternates.languages для всех 4 локалей
+  const buildAlternates = (route) => ({
+    languages: Object.fromEntries(
+      locales.map((locale) => [locale, buildUrl(locale, route)])
+    ),
   });
 
-  // 2. ДРУГИЕ ЯЗЫКИ (с префиксами /pl, /ru, /en)
+  let allPages = [];
+
+  // 1. Статические страницы — каждый язык отдельной записью + hreflang alternates
   locales.forEach((locale) => {
     staticRoutes.forEach((route) => {
       allPages.push({
-        url: `${baseUrl}/${locale}${route}`,
+        url: buildUrl(locale, route),
         lastModified: new Date(),
         changeFrequency: route === '' ? 'weekly' : 'monthly',
-        priority: 0.8,
+        priority: locale === 'uk' ? (route === '' ? 1 : 0.8) : 0.7,
+        alternates: buildAlternates(route),
       });
     });
   });
 
-  // 3. СТАТЬИ БЛОГА (Всегда актуальные!)
+  // 2. Динамические страницы блога — тоже со всеми языковыми вариантами
   if (db) {
     try {
       const querySnapshot = await getDocs(collection(db, 'blogPosts'));
-      querySnapshot.forEach((doc) => {
-        
-        // Украинская версия статьи (без /uk)
-        allPages.push({
-          url: `${baseUrl}/blog/${doc.id}`,
-          lastModified: new Date(doc.data().updatedAt || Date.now()),
-          changeFrequency: 'monthly',
-          priority: 0.7,
-        });
-        
-        // Иноязычные версии статьи
+      querySnapshot.forEach((docSnap) => {
+        const slug = docSnap.id;
+        const blogRoute = `/blog/${slug}`;
+        const lastMod = new Date(docSnap.data().updatedAt || Date.now());
+
         locales.forEach((locale) => {
           allPages.push({
-            url: `${baseUrl}/${locale}/blog/${doc.id}`,
-            lastModified: new Date(doc.data().updatedAt || Date.now()),
+            url: buildUrl(locale, blogRoute),
+            lastModified: lastMod,
             changeFrequency: 'monthly',
-            priority: 0.6,
+            priority: locale === 'uk' ? 0.7 : 0.6,
+            alternates: buildAlternates(blogRoute),
           });
         });
       });
     } catch (error) {
-      console.error("Ошибка генерации Sitemap для блога:", error);
+      console.error('Ошибка генерации Sitemap для блога:', error);
     }
   }
 

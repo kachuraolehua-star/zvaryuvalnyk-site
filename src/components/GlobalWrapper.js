@@ -4,7 +4,7 @@ import React, { useState, createContext, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { translations } from '@/lib/translations';
-import { Menu, X, Phone, Globe, Lock } from 'lucide-react';
+import { Menu, X, Phone, Globe } from 'lucide-react';
 
 export const AppContext = createContext();
 
@@ -17,6 +17,33 @@ const HardHat = ({ size = 24, className = "" }) => (
     <path d="M10 16h4"/>
   </svg>
 );
+
+// Вынесен за пределы GlobalWrapper — не пересоздаётся при каждом рендере родителя
+function LeadModal({ showModal, setShowModal, t, isSubmitting, handleFormSubmit }) {
+  if (!showModal) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 relative animate-[fadeInUp_0.3s_ease-out]">
+        <button onClick={() => setShowModal(false)} className="absolute right-4 top-4 text-gray-500 hover:text-black transition"><X size={24} /></button>
+        <h3 className="text-2xl font-bold mb-2">{t.modal.title}</h3>
+        <p className="text-gray-600 mb-6">{t.modal.desc}</p>
+        <form onSubmit={handleFormSubmit} className="space-y-4">
+          <input type="hidden" name="_subject" value="Нова заявка з сайту Zvaryuvalnyk.xyz!" />
+          <div><label className="block text-sm font-medium text-gray-700 mb-1">{t.modal.name}</label><input name="Ім'я" type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" required /></div>
+          <div><label className="block text-sm font-medium text-gray-700 mb-1">{t.modal.phone}</label><input name="Телефон" type="tel" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" required /></div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t.modal.interest}</label>
+            <select name="Цікавить" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none">
+              <option>{t.modal.opt1}</option><option>{t.modal.opt2}</option><option>{t.modal.opt3}</option><option>{t.modal.opt4}</option>
+            </select>
+          </div>
+          <button type="submit" disabled={isSubmitting} className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 transition shadow-lg shadow-yellow-500/20 disabled:opacity-50">{isSubmitting ? "Відправка..." : t.modal.send}</button>
+          <p className="text-xs text-center text-gray-500 mt-4">{t.modal.terms}</p>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default function GlobalWrapper({ children }) {
   const pathname = usePathname(); 
@@ -89,39 +116,19 @@ export default function GlobalWrapper({ children }) {
     }
   };
 
-  const LeadModal = () => {
-    if (!showModal) return null;
-    return (
-      <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl max-w-md w-full p-6 relative animate-[fadeInUp_0.3s_ease-out]">
-          <button onClick={() => setShowModal(false)} className="absolute right-4 top-4 text-gray-500 hover:text-black transition"><X size={24} /></button>
-          <h3 className="text-2xl font-bold mb-2">{t.modal.title}</h3>
-          <p className="text-gray-600 mb-6">{t.modal.desc}</p>
-          <form onSubmit={handleFormSubmit} className="space-y-4">
-            <input type="hidden" name="_subject" value="Новая заявка с сайта Zvaryuvalnyk.xyz!" />
-            <input type="hidden" name="_captcha" value="false" />
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">{t.modal.name}</label><input name="Ім'я" type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">{t.modal.phone}</label><input name="Телефон" type="tel" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" required /></div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t.modal.interest}</label>
-              <select name="Цікавить" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none">
-                <option>{t.modal.opt1}</option><option>{t.modal.opt2}</option><option>{t.modal.opt3}</option><option>{t.modal.opt4}</option>
-              </select>
-            </div>
-            <button type="submit" disabled={isSubmitting} className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 transition shadow-lg shadow-yellow-500/20 disabled:opacity-50">{isSubmitting ? "Відправка..." : t.modal.send}</button>
-            <p className="text-xs text-center text-gray-500 mt-4">{t.modal.terms}</p>
-          </form>
-        </div>
-      </div>
-    );
-  };
 
   // ПЕРЕДАЄМО ФУНКЦІЮ l У ВСІ СТОРІНКИ САЙТУ
   return (
     <AppContext.Provider value={{ lang, showModal, setShowModal, t, l }}>
       <style dangerouslySetInnerHTML={{__html: `@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } @keyframes pulse { 0%, 100% { transform: scale(1.05); } 50% { transform: scale(1.1); } }`}} />
       <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
-        <LeadModal />
+        <LeadModal
+        showModal={showModal}
+        setShowModal={setShowModal}
+        t={t}
+        isSubmitting={isSubmitting}
+        handleFormSubmit={handleFormSubmit}
+      />
 
         <header className="bg-white shadow-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -202,9 +209,6 @@ export default function GlobalWrapper({ children }) {
               <p className="mb-4 md:mb-0">&copy; 2026 Zvaryuvalnyk.xyz. {t.footer.rights}</p>
               <div className="flex flex-col items-center md:items-end">
                 <a href="#" className="hover:text-white transition mb-2">{t.footer.privacy}</a>
-                <Link href="/admin" className="text-slate-400 hover:text-white transition text-xs flex items-center">
-                  <Lock size={12} className="mr-1" /> Адмін-панель
-                </Link>
               </div>
             </div>
           </div>
