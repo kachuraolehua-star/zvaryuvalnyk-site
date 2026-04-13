@@ -13,6 +13,14 @@ const generateSlug = (text) => {
   return text.toLowerCase().split('').map(char => a[char] || char).join('').replace(/[^a-z0-9\-]+/g, '').replace(/(^-|-$)+/g, '').replace(/-+/g, '-');
 };
 
+// МАГІЯ: ФУНКЦІЯ ПЕРЕТВОРЕННЯ ДАТИ (ДД.ММ.РРРР -> ЧАС ДЛЯ СОРТУВАННЯ)
+const parseDate = (dateStr) => {
+  if (!dateStr) return 0;
+  const parts = dateStr.split('.');
+  if (parts.length !== 3) return 0;
+  return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+};
+
 export default function AdminPage() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminLogin, setAdminLogin] = useState('');
@@ -47,7 +55,8 @@ export default function AdminPage() {
     const postsRef = collection(db, 'blogPosts');
     const unsubscribe = onSnapshot(postsRef, (snapshot) => {
       const loadedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      loadedPosts.sort((a, b) => b.createdAt - a.createdAt);
+      // СОРТУВАННЯ ЖОРСТКО ЗА ТЕКСТОВОЮ ДАТОЮ З ПОЛЯ!
+      loadedPosts.sort((a, b) => parseDate(b.date) - parseDate(a.date));
       setBlogPosts(loadedPosts);
     }, (error) => console.error("Firestore error:", error));
     return () => unsubscribe();
@@ -136,7 +145,6 @@ export default function AdminPage() {
     }
   };
   
-  // ПОВЕРНУТО МАСОВИЙ ІМПОРТ (з підтримкою ЧПУ)
   const handleBulkImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -223,7 +231,6 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* РЕДАКТОР СТАТТІ */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-8">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h2 className="text-xl font-bold text-slate-900 flex items-center">
@@ -333,7 +340,6 @@ export default function AdminPage() {
               </form>
             </div>
 
-            {/* СПИСОК СТАТЕЙ */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
               <h2 className="text-xl font-bold text-slate-900 mb-6">Список ваших статей ({blogPosts.length})</h2>
               <div className="space-y-3">

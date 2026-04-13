@@ -30,6 +30,14 @@ const RevealOnScroll = ({ children, className = "" }) => {
   );
 };
 
+// МАГІЯ: ФУНКЦІЯ ПЕРЕТВОРЕННЯ ДАТИ (ДД.ММ.РРРР -> ЧАС ДЛЯ СОРТУВАННЯ)
+const parseDate = (dateStr) => {
+  if (!dateStr) return 0;
+  const parts = dateStr.split('.');
+  if (parts.length !== 3) return 0;
+  return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+};
+
 export default function HomePage() {
   const { lang, t, setShowModal, l } = useContext(AppContext);
   const [blogPosts, setBlogPosts] = useState([]);
@@ -45,7 +53,8 @@ export default function HomePage() {
     const postsRef = collection(db, 'blogPosts');
     const unsubscribe = onSnapshot(postsRef, (snapshot) => {
       const loadedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      loadedPosts.sort((a, b) => b.createdAt - a.createdAt);
+      // СОРТУВАННЯ ЖОРСТКО ЗА ТЕКСТОВОЮ ДАТОЮ З ПОЛЯ!
+      loadedPosts.sort((a, b) => parseDate(b.date) - parseDate(a.date));
       setBlogPosts(loadedPosts.slice(0, 3)); 
     }, (error) => console.error("Firestore error:", error));
     return () => unsubscribe();
@@ -233,7 +242,6 @@ export default function HomePage() {
                     </div>
                     <div className="p-6 flex flex-col flex-grow">
                       <div>
-                        {/* ДОБАВИЛИ БЛОК ДЛЯ ДАТЫ И ПРОСМОТРОВ */}
                         <div className="flex items-center justify-between mb-3">
                           <p className="text-xs text-yellow-600 font-bold">{post.date}</p>
                           <p className="text-xs text-gray-400 font-bold flex items-center">
