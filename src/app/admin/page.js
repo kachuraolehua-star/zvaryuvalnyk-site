@@ -2,9 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { Lock, Edit, Plus, Trash2, ChevronLeft } from 'lucide-react';
+import { Lock, Edit, Plus, Trash2, ChevronLeft, Eye } from 'lucide-react';
+
+// ФУНКЦІЯ ДЛЯ ГЕНЕРАЦІЇ ЧПУ (SLUG)
+const generateSlug = (text) => {
+  if (!text) return "";
+  const a = {"а":"a","б":"b","в":"v","г":"h","д":"d","е":"e","є":"ye","ж":"zh","з":"z","и":"y","і":"i","ї":"yi","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"kh","ц":"ts","ч":"ch","ш":"sh","щ":"shch","ь":"","ю":"yu","я":"ya","ы":"y","э":"e","ъ":""," ":"-"};
+  return text.toLowerCase().split('').map(char => a[char] || char).join('').replace(/[^a-z0-9\-]+/g, '').replace(/(^-|-$)+/g, '').replace(/-+/g, '-');
+};
 
 export default function AdminPage() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
@@ -18,6 +25,7 @@ export default function AdminPage() {
   const [editingPostId, setEditingPostId] = useState(null);
   const [newPostDate, setNewPostDate] = useState("");
   const [newPostImage, setNewPostImage] = useState("");
+  const [newPostViews, setNewPostViews] = useState(0);
   const [newPostTitle, setNewPostTitle] = useState({ uk: "", pl: "", ru: "", en: "" });
   const [newPostSeoTitle, setNewPostSeoTitle] = useState({ uk: "", pl: "", ru: "", en: "" });
   const [newPostExcerpt, setNewPostExcerpt] = useState({ uk: "", pl: "", ru: "", en: "" });
@@ -34,7 +42,6 @@ export default function AdminPage() {
     return val || { uk: "", pl: "", ru: "", en: "" };
   };
 
-  // Завантаження статей
   useEffect(() => {
     if (!db) return;
     const postsRef = collection(db, 'blogPosts');
@@ -48,7 +55,6 @@ export default function AdminPage() {
 
   const handleAdminLogin = (e) => {
     e.preventDefault();
-    // Той самий секретний пароль
     if (adminLogin === 'admin' && adminPass === 'zvaryar2026') {
       setIsAdminAuthenticated(true);
     } else {
@@ -60,6 +66,7 @@ export default function AdminPage() {
     setEditingPostId(post.id);
     setNewPostDate(post.date || "");
     setNewPostImage(post.image || "");
+    setNewPostViews(post.views || 0);
     setNewPostTitle(parseMultiLang(post.title));
     setNewPostSeoTitle(parseMultiLang(post.seoTitle));
     setNewPostExcerpt(parseMultiLang(post.excerpt));
@@ -69,7 +76,7 @@ export default function AdminPage() {
 
   const cancelEdit = () => {
     setEditingPostId(null);
-    setNewPostDate(""); setNewPostImage("");
+    setNewPostDate(""); setNewPostImage(""); setNewPostViews(0);
     setNewPostTitle({ uk: "", pl: "", ru: "", en: "" });
     setNewPostSeoTitle({ uk: "", pl: "", ru: "", en: "" });
     setNewPostExcerpt({ uk: "", pl: "", ru: "", en: "" });
@@ -82,10 +89,16 @@ export default function AdminPage() {
       alert("Українська версія заголовка та дата обов'язкові!");
       return;
     }
+
+    const slug = generateSlug(newPostTitle.uk);
+    if (!slug) {
+        alert("Заголовок має містити літери для створення URL!"); return;
+    }
     
     const postData = {
       date: newPostDate,
       image: newPostImage || "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=80",
+      views: Number(newPostViews) || 0,
       title: newPostTitle,
       seoTitle: newPostSeoTitle,
       excerpt: newPostExcerpt,
@@ -95,10 +108,16 @@ export default function AdminPage() {
 
     try {
       if (editingPostId) {
-        await updateDoc(doc(db, 'blogPosts', editingPostId), postData);
+        if (editingPostId !== slug) {
+            postData.createdAt = Date.now(); 
+            await setDoc(doc(db, 'blogPosts', slug), postData); 
+            await deleteDoc(doc(db, 'blogPosts', editingPostId)); 
+        } else {
+            await updateDoc(doc(db, 'blogPosts', editingPostId), postData); 
+        }
       } else {
         postData.createdAt = Date.now();
-        await addDoc(collection(db, 'blogPosts'), postData);
+        await setDoc(doc(db, 'blogPosts', slug), postData); 
       }
       cancelEdit();
       alert("Збережено успішно!");
@@ -117,6 +136,7 @@ export default function AdminPage() {
     }
   };
   
+  // ПОВЕРНУТО МАСОВИЙ ІМПОРТ (з підтримкою ЧПУ)
   const handleBulkImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -130,17 +150,21 @@ export default function AdminPage() {
             
             let count = 0;
             for (const article of importedData) {
+                const parsedTitle = parseMultiLang(article.title);
+                const slug = generateSlug(parsedTitle.uk || parsedTitle.ru || `imported-${Date.now()}`);
+                
                 const postData = {
                     date: article.date || "",
                     image: article.image || "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=80",
-                    title: parseMultiLang(article.title),
+                    views: article.views || 0,
+                    title: parsedTitle,
                     seoTitle: parseMultiLang(article.seoTitle),
                     excerpt: parseMultiLang(article.excerpt),
                     content: parseMultiLang(article.content),
                     createdAt: Date.now() - (count * 1000),
                     updatedAt: Date.now()
                 };
-                if (db) await addDoc(collection(db, 'blogPosts'), postData);
+                if (db) await setDoc(doc(db, 'blogPosts', slug), postData);
                 count++;
             }
             alert(`✅ Успішно завантажено статей: ${count}`);
@@ -155,7 +179,6 @@ export default function AdminPage() {
     }
   };
 
-  // ----- РЕНДЕР СТОРІНКИ -----
   return (
     <div className="py-12 bg-gray-100 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -177,22 +200,14 @@ export default function AdminPage() {
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <div>
                 <input 
-                  type="text" 
-                  placeholder="Логін" 
-                  value={adminLogin}
-                  onChange={(e) => setAdminLogin(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" 
-                  required 
+                  type="text" placeholder="Логін" value={adminLogin} onChange={(e) => setAdminLogin(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" required 
                 />
               </div>
               <div>
                 <input 
-                  type="password" 
-                  placeholder="Пароль" 
-                  value={adminPass}
-                  onChange={(e) => setAdminPass(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" 
-                  required 
+                  type="password" placeholder="Пароль" value={adminPass} onChange={(e) => setAdminPass(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" required 
                 />
               </div>
               <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition shadow-md">
@@ -237,9 +252,7 @@ export default function AdminPage() {
                 <div className="flex space-x-2">
                   {['uk', 'pl', 'ru', 'en'].map(l => (
                     <button
-                      key={l}
-                      type="button"
-                      onClick={() => setAdminLang(l)}
+                      key={l} type="button" onClick={() => setAdminLang(l)}
                       className={`px-5 py-2 rounded-lg font-bold text-sm uppercase transition ${adminLang === l ? 'bg-yellow-500 text-black shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                     >
                       {l}
@@ -252,24 +265,35 @@ export default function AdminPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Заголовок ({adminLang.toUpperCase()}) {adminLang === 'uk' && '*'}
+                      Заголовок ({adminLang.toUpperCase()}) {adminLang === 'uk' && '* (Сформує URL!)'}
                     </label>
                     <input 
-                      type="text" 
-                      value={newPostTitle[adminLang] || ""}
-                      onChange={(e) => setNewPostTitle({...newPostTitle, [adminLang]: e.target.value})}
-                      placeholder="Візуальний заголовок статті..."
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none transition" 
+                      type="text" value={newPostTitle[adminLang] || ""} onChange={(e) => setNewPostTitle({...newPostTitle, [adminLang]: e.target.value})}
+                      placeholder="Візуальний заголовок..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none transition" 
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Дата публікації *</label>
                     <input 
-                      type="text" 
-                      value={newPostDate}
-                      onChange={(e) => setNewPostDate(e.target.value)}
-                      placeholder="ДД.ММ.РРРР"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none transition" 
+                      type="text" value={newPostDate} onChange={(e) => setNewPostDate(e.target.value)}
+                      placeholder="ДД.ММ.РРРР" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none transition" 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">URL Картинки</label>
+                    <input 
+                      type="url" value={newPostImage} onChange={(e) => setNewPostImage(e.target.value)}
+                      placeholder="https://..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none text-sm transition" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Перегляди (Накрутка)</label>
+                    <input 
+                      type="number" value={newPostViews} onChange={(e) => setNewPostViews(e.target.value)}
+                      placeholder="0" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none transition" 
                     />
                   </div>
                 </div>
@@ -279,42 +303,27 @@ export default function AdminPage() {
                     SEO Title (Для Google) ({adminLang.toUpperCase()})
                   </label>
                   <input 
-                    type="text" 
-                    value={newPostSeoTitle[adminLang] || ""}
-                    onChange={(e) => setNewPostSeoTitle({...newPostSeoTitle, [adminLang]: e.target.value})}
-                    placeholder="Оптимізований заголовок..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none transition" 
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">URL Картинки</label>
-                  <input 
-                    type="url" 
-                    value={newPostImage}
-                    onChange={(e) => setNewPostImage(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none text-sm transition" 
+                    type="text" value={newPostSeoTitle[adminLang] || ""} onChange={(e) => setNewPostSeoTitle({...newPostSeoTitle, [adminLang]: e.target.value})}
+                    placeholder="Оптимізований заголовок..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none transition" 
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Коротка анотація ({adminLang.toUpperCase()})</label>
                   <textarea 
-                    value={newPostExcerpt[adminLang] || ""}
-                    onChange={(e) => setNewPostExcerpt({...newPostExcerpt, [adminLang]: e.target.value})}
-                    placeholder="Коротко про що стаття (2-3 речення)..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none resize-none h-24 transition" 
+                    value={newPostExcerpt[adminLang] || ""} onChange={(e) => setNewPostExcerpt({...newPostExcerpt, [adminLang]: e.target.value})}
+                    placeholder="Коротко про що стаття (2-3 речення)..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none resize-none h-24 transition" 
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Повний текст статті ({adminLang.toUpperCase()})</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                    <span>Повний текст ({adminLang.toUpperCase()})</span>
+                    <span className="text-yellow-600 text-xs">Жирний текст: **слово**</span>
+                  </label>
                   <textarea 
-                    value={newPostContent[adminLang] || ""}
-                    onChange={(e) => setNewPostContent({...newPostContent, [adminLang]: e.target.value})}
-                    placeholder="Напишіть тут повний текст..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none resize-y h-64 transition" 
+                    value={newPostContent[adminLang] || ""} onChange={(e) => setNewPostContent({...newPostContent, [adminLang]: e.target.value})}
+                    placeholder="Напишіть тут повний текст..." className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none resize-y h-64 transition" 
                   />
                 </div>
 
@@ -333,23 +342,18 @@ export default function AdminPage() {
                     <div className="flex items-center">
                       <img src={post.image} className="w-16 h-16 rounded-lg object-cover mr-4 shadow-sm" alt="thumb"/>
                       <div>
-                        <p className="text-xs text-gray-500 font-bold mb-1">{post.date}</p>
+                        <p className="text-xs text-gray-500 font-bold mb-1 flex items-center">
+                          {post.date} <span className="mx-2">|</span> <Eye size={12} className="mr-1"/> {post.views || 0}
+                        </p>
                         <h4 className="font-bold text-slate-900 line-clamp-1">{getPostText(post, 'title') || 'Без заголовка'}</h4>
+                        <p className="text-xs text-blue-500 mt-1">/blog/{post.id}</p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => handleEditClick(post)}
-                        className="p-3 text-slate-600 hover:bg-white hover:text-yellow-600 hover:shadow-sm border border-transparent hover:border-gray-200 rounded-lg transition"
-                        title="Редагувати"
-                      >
+                      <button onClick={() => handleEditClick(post)} className="p-3 text-slate-600 hover:bg-white hover:text-yellow-600 hover:shadow-sm border border-transparent hover:border-gray-200 rounded-lg transition" title="Редагувати">
                         <Edit size={20} />
                       </button>
-                      <button 
-                        onClick={() => handleDeletePost(post.id)}
-                        className="p-3 text-red-500 hover:bg-red-50 hover:shadow-sm border border-transparent hover:border-red-100 rounded-lg transition"
-                        title="Видалити"
-                      >
+                      <button onClick={() => handleDeletePost(post.id)} className="p-3 text-red-500 hover:bg-red-50 hover:shadow-sm border border-transparent hover:border-red-100 rounded-lg transition" title="Видалити">
                         <Trash2 size={20} />
                       </button>
                     </div>

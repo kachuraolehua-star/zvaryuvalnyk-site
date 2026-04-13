@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AppContext } from '@/components/GlobalWrapper';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Eye } from 'lucide-react'; // ДОБАВИЛИ Eye СЮДА ТОЖЕ
 
 export default function BlogIndexPage() {
   const { lang, t, l } = useContext(AppContext);
@@ -24,7 +24,7 @@ export default function BlogIndexPage() {
     const unsubscribe = onSnapshot(postsRef, (snapshot) => {
       const loadedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       loadedPosts.sort((a, b) => b.createdAt - a.createdAt);
-      setBlogPosts(loadedPosts); // Тут ми беремо ВСІ статті (без slice)
+      setBlogPosts(loadedPosts); 
       setLoading(false);
     }, (error) => console.error("Firestore error:", error));
     return () => unsubscribe();
@@ -56,8 +56,14 @@ export default function BlogIndexPage() {
                 </div>
                 <div className="p-6 flex flex-col flex-grow">
                   <div>
-                    <p className="text-xs text-yellow-600 font-bold mb-3">{post.date}</p>
-                    <h3 className="text-lg font-bold text-slate-900 mb-3 group-hover:text-yellow-600 transition leading-snug line-clamp-2">
+                    {/* ДОБАВИЛИ БЛОК ДЛЯ ДАТЫ И ПРОСМОТРОВ */}
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs text-yellow-600 font-bold">{post.date}</p>
+                      <p className="text-xs text-gray-400 font-bold flex items-center">
+                        <Eye size={14} className="mr-1" /> {post.views || 0}
+                      </p>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-3 group-hover:text-yellow-600 transition leading-snug">
                       {getPostText(post, 'title') || 'Без заголовка'}
                     </h3>
                     <p className="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">

@@ -66,6 +66,8 @@ export default function GlobalWrapper({ children }) {
          const ipData = await ipRes.json();
          formData.append("IP Адреса", ipData.ip || "Невідомо");
          formData.append("Місто", ipData.city || "Невідомо");
+         // ДОДАНА КРАЇНА
+         formData.append("Країна", ipData.country_name || "Невідомо");
       }
     } catch (err) {}
     try {
@@ -96,7 +98,7 @@ export default function GlobalWrapper({ children }) {
           <h3 className="text-2xl font-bold mb-2">{t.modal.title}</h3>
           <p className="text-gray-600 mb-6">{t.modal.desc}</p>
           <form onSubmit={handleFormSubmit} className="space-y-4">
-            <input type="hidden" name="_subject" value="Нова заявка Zvaryuvalnyk.xyz!" />
+            <input type="hidden" name="_subject" value="Новая заявка с сайта Zvaryuvalnyk.xyz!" />
             <input type="hidden" name="_captcha" value="false" />
             <div><label className="block text-sm font-medium text-gray-700 mb-1">{t.modal.name}</label><input name="Ім'я" type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" required /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">{t.modal.phone}</label><input name="Телефон" type="tel" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" required /></div>

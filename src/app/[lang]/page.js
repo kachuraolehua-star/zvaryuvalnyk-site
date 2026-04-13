@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AppContext } from '@/components/GlobalWrapper';
-import { MapPin, Banknote, CheckCircle2, ChevronRight, ShieldCheck, GraduationCap } from 'lucide-react';
+import { MapPin, Banknote, CheckCircle2, ChevronRight, ShieldCheck, GraduationCap, Eye } from 'lucide-react';
 
 const RevealOnScroll = ({ children, className = "" }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -233,8 +233,14 @@ export default function HomePage() {
                     </div>
                     <div className="p-6 flex flex-col flex-grow">
                       <div>
-                        <p className="text-xs text-yellow-600 font-bold mb-3">{post.date}</p>
-                        <h3 className="text-lg font-bold text-slate-900 mb-3 group-hover:text-yellow-600 transition leading-snug line-clamp-2">
+                        {/* ДОБАВИЛИ БЛОК ДЛЯ ДАТЫ И ПРОСМОТРОВ */}
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-xs text-yellow-600 font-bold">{post.date}</p>
+                          <p className="text-xs text-gray-400 font-bold flex items-center">
+                            <Eye size={14} className="mr-1" /> {post.views || 0}
+                          </p>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 mb-3 group-hover:text-yellow-600 transition leading-snug">
                           {getPostText(post, 'title') || 'Без заголовка'}
                         </h3>
                         <p className="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">
@@ -248,7 +254,6 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* БОНУС: Кнопка "Всі статті" */}
             {blogPosts.length > 0 && (
               <div className="mt-12 text-center">
                 <Link href={l('/blog')} className="inline-flex items-center justify-center bg-slate-900 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-slate-800 transition shadow-lg hover:-translate-y-1">

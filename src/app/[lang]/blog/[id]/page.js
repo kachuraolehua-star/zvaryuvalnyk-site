@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AppContext } from '@/components/GlobalWrapper';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Eye } from 'lucide-react';
 
 export default function BlogPost() {
   const { id } = useParams(); 
@@ -21,6 +21,17 @@ export default function BlogPost() {
     return postObj[field][lang] || postObj[field]['uk'] || '';
   };
 
+  // МАГИЯ: Функция для жирного текста
+  const renderFormattedText = (text) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="text-slate-900 font-extrabold">{part.slice(2, -2)}</strong>;
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   useEffect(() => {
     if (!id || !db) return;
     const fetchPost = async () => {
@@ -29,6 +40,9 @@ export default function BlogPost() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setPost({ id: docSnap.id, ...docSnap.data() });
+          
+          // Добавляем +1 к просмотрам при открытии статьи
+          await updateDoc(docRef, { views: increment(1) });
         }
       } catch (error) {
         console.error("Помилка завантаження статті:", error);
@@ -40,12 +54,10 @@ export default function BlogPost() {
     window.scrollTo(0, 0); 
   }, [id]);
 
-  // Пока данные загружаются
   if (loading || !post) {
     return (
       <div className="py-20 text-center min-h-[60vh] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-500 font-medium">Завантаження статті...</p>
       </div>
     );
   }
@@ -66,16 +78,29 @@ export default function BlogPost() {
           
           <div className="p-8 md:p-12 -mt-20 relative z-10 bg-white rounded-t-3xl">
             <div className="mb-8 border-b border-gray-100 pb-8">
-              <p className="text-sm font-bold text-yellow-600 mb-4 flex items-center">Опубліковано: {post.date}</p>
-              <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 leading-tight">{getPostText(post, 'title') || 'Без заголовка'}</h1>
+              <div className="flex items-center text-sm font-bold text-yellow-600 mb-4 space-x-4">
+                 <span>Опубліковано: {post.date}</span>
+                 {/* СЧЕТЧИК ПРОСМОТРОВ */}
+                 <span className="flex items-center text-gray-400">
+                   <Eye size={16} className="mr-1.5" /> {post.views ? post.views + 1 : 1}
+                 </span>
+              </div>
+              {/* УМЕНЬШЕННЫЙ ЗАГОЛОВОК H1 */}
+              <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight">
+                {getPostText(post, 'title') || 'Без заголовка'}
+              </h1>
             </div>
             
             <div className="prose prose-lg max-w-none text-gray-700">
               <p className="lead text-xl font-medium text-slate-900 mb-8 p-6 bg-slate-50 rounded-2xl border-l-4 border-yellow-500">
                 {getPostText(post, 'excerpt') || 'Опис відсутній.'}
               </p>
+              
+              {/* ВЫВОД ТЕКСТА С ПОДДЕРЖКОЙ ЖИРНОГО */}
               {getPostText(post, 'content').split('\n').map((paragraph, idx) => (
-                <p key={idx} className="mb-6 leading-relaxed">{paragraph}</p>
+                <p key={idx} className="mb-6 leading-relaxed text-lg">
+                  {renderFormattedText(paragraph)}
+                </p>
               ))}
             </div>
 
