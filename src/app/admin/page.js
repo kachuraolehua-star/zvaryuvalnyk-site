@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Lock, Edit, Plus, Trash2, ChevronLeft, Eye } from 'lucide-react';
+import { verifyAdmin } from '@/app/actions/auth';
 
 // ФУНКЦІЯ ДЛЯ ГЕНЕРАЦІЇ ЧПУ (SLUG)
 const generateSlug = (text) => {
@@ -62,9 +63,10 @@ export default function AdminPage() {
     return () => unsubscribe();
   }, []);
 
-  const handleAdminLogin = (e) => {
+  const handleAdminLogin = async (e) => {
     e.preventDefault();
-    if (adminLogin === 'admin' && adminPass === 'zvaryar2026') {
+    const ok = await verifyAdmin(adminLogin, adminPass);
+    if (ok) {
       setIsAdminAuthenticated(true);
     } else {
       alert('Невірний логін або пароль!');
