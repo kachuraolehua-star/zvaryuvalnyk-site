@@ -12,18 +12,30 @@ export function middleware(request) {
     return;
   }
 
+  // 301 редирект: устраняем дублирование контента для дефолтной локали.
+  // /uk        → /          (постоянный редирект)
+  // /uk/blog   → /blog      (постоянный редирект)
+  // /uk/blog/x → /blog/x   (постоянный редирект)
+  if (pathname === '/uk') {
+    return NextResponse.redirect(new URL('/', request.url), 301);
+  }
+  if (pathname.startsWith('/uk/')) {
+    // slice(3) убирает ровно три символа '/uk', оставляя '/...'
+    return NextResponse.redirect(new URL(pathname.slice(3), request.url), 301);
+  }
+
   const locales = ['uk', 'pl', 'ru', 'en'];
-  
+
   // Перевіряємо, чи вже є мова в URL (наприклад /pl/vacancies)
   const pathnameHasLocale = locales.some(
     (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
   );
 
-  // Якщо це інша мова — нічого не робимо, залишаємо як є
+  // Якщо це інша мова (/pl, /ru, /en) — нічого не робимо, залишаємо як є
   if (pathnameHasLocale) return;
 
-  // МАГІЯ ТУТ: Робимо rewrite (підміну), а не redirect!
-  // Браузер показуватиме /vacancies, але Next.js завантажить /uk/vacancies
+  // REWRITE (не redirect!): браузер показує /vacancies,
+  // Next.js завантажує /uk/vacancies — без зміни URL в адресному рядку.
   return NextResponse.rewrite(new URL(`/uk${pathname}`, request.url));
 }
 
