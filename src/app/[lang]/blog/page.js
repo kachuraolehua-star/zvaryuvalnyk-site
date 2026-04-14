@@ -61,7 +61,7 @@ export default function BlogIndexPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {blogPosts.map((post) => (
+            {blogPosts.map((post, index) => (
               <Link href={l(`/blog/${post.id}`)} key={post.id} className="bg-white rounded-2xl border border-gray-200 hover:border-yellow-500 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group flex flex-col overflow-hidden">
                 <div className="h-48 overflow-hidden relative">
                    <Image
@@ -70,6 +70,7 @@ export default function BlogIndexPage() {
                    alt={getPostText(post, 'title')}
                    className="object-cover transition-transform duration-700 group-hover:scale-110"
                    sizes="(max-width: 768px) 100vw, 33vw"
+                   priority={index === 0}
                  />
                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>

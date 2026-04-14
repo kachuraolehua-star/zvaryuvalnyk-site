@@ -1,3 +1,5 @@
+import "../globals.css";
+import { GoogleTagManager } from '@next/third-parties/google';
 import GlobalWrapper from "@/components/GlobalWrapper";
 import { translations } from "@/lib/translations";
 
@@ -45,12 +47,14 @@ export default async function LocaleLayout({ children, params }) {
   const { lang } = await params;
 
   return (
-    <html 
-      lang={lang} 
-      style={{ scrollBehavior: 'smooth' }} 
-      data-scroll-behavior="smooth" 
+    <html
+      lang={lang}
+      style={{ scrollBehavior: 'smooth' }}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
+      {/* GTM: script в <head> + noscript в <body> — без блокировки рендера */}
+      <GoogleTagManager gtmId="GTM-WZLGT64Q" />
       <body>
         <GlobalWrapper>{children}</GlobalWrapper>
       </body>
