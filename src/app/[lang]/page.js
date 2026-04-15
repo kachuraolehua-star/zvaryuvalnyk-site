@@ -1,37 +1,17 @@
-"use client";
+// Server Component — без "use client"
+// Данные блога загружаются на сервере через Firestore REST API
 
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import { fetchCollection } from '@/lib/firestore-rest';
+import { translations } from '@/lib/translations';
 import Link from 'next/link';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { AppContext } from '@/components/GlobalWrapper';
-import { MapPin, Banknote, CheckCircle2, ChevronRight, ShieldCheck, GraduationCap, Eye } from 'lucide-react';
 import Image from 'next/image';
+import RevealOnScroll from '@/components/RevealOnScroll';
+import ModalTriggerButton from '@/components/ModalTriggerButton';
+import {
+  MapPin, Banknote, CheckCircle2, ChevronRight,
+  ShieldCheck, GraduationCap, Eye,
+} from 'lucide-react';
 
-const RevealOnScroll = ({ children, className = "" }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIsVisible(true);
-        observer.unobserve(ref.current);
-      }
-    }, { threshold: 0.1 });
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={ref} className={`transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'} ${className}`}>
-      {children}
-    </div>
-  );
-};
-
-// МАГІЯ: ФУНКЦІЯ ПЕРЕТВОРЕННЯ ДАТИ (ДД.ММ.РРРР -> ЧАС ДЛЯ СОРТУВАННЯ)
 const parseDate = (dateStr) => {
   if (!dateStr) return 0;
   const parts = dateStr.split('.');
@@ -39,31 +19,26 @@ const parseDate = (dateStr) => {
   return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
 };
 
-export default function HomePage() {
-  const { lang, t, setShowModal, l } = useContext(AppContext);
-  const [blogPosts, setBlogPosts] = useState([]);
+const getPostText = (postObj, field, lang) => {
+  if (!postObj || !postObj[field]) return '';
+  if (typeof postObj[field] === 'string') return postObj[field];
+  return postObj[field][lang] || postObj[field]['uk'] || '';
+};
 
-  const getPostText = (postObj, field) => {
-    if (!postObj || !postObj[field]) return "";
-    if (typeof postObj[field] === 'string') return postObj[field];
-    return postObj[field][lang] || postObj[field]['uk'] || '';
-  };
+export default async function HomePage({ params }) {
+  const { lang } = await params;
+  const t = translations[lang] || translations['uk'];
+  const l = (path) => lang === 'uk' ? path : `/${lang}${path}`;
 
-  useEffect(() => {
-    if (!db) return;
-    const postsRef = collection(db, 'blogPosts');
-    getDocs(postsRef)
-      .then((snapshot) => {
-        const loadedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        loadedPosts.sort((a, b) => parseDate(b.date) - parseDate(a.date));
-        setBlogPosts(loadedPosts.slice(0, 3));
-      })
-      .catch((error) => console.error('Firestore error:', error));
-  }, []);
+  // Блог-превью — 3 последних статьи, ISR-кеш 5 минут
+  const allPosts = await fetchCollection('blogPosts', { revalidate: 300 });
+  allPosts.sort((a, b) => parseDate(b.date) - parseDate(a.date));
+  const blogPosts = allPosts.slice(0, 3);
 
   return (
     <div className="animate-[fadeInUp_0.3s_ease-out]">
-      {/* Hero Section */}
+
+      {/* ── Hero ───────────────────────────────────────────────────── */}
       <section className="relative bg-slate-900 text-white overflow-hidden">
         <div className="absolute inset-0">
           <Image
@@ -76,7 +51,7 @@ export default function HomePage() {
           />
           <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/90 to-transparent"></div>
         </div>
-        
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-20 lg:py-32">
           <div className="max-w-2xl animate-[fadeInUp_0.8s_ease-out]">
             <span className="inline-block py-1 px-3 rounded-full bg-yellow-500/20 text-yellow-400 text-sm font-bold tracking-wider mb-4 border border-yellow-500/30">
@@ -89,9 +64,10 @@ export default function HomePage() {
               {t.hero.desc1}<strong className="text-white">{t.hero.descHighlight}</strong>{t.hero.desc2}
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button onClick={() => setShowModal(true)} className="bg-yellow-500 text-black px-8 py-4 rounded-xl font-bold text-lg hover:bg-yellow-400 transition shadow-lg shadow-yellow-500/30 flex items-center justify-center hover:-translate-y-1">
+              {/* ModalTriggerButton — единственный клиентский "островок" на странице */}
+              <ModalTriggerButton className="bg-yellow-500 text-black px-8 py-4 rounded-xl font-bold text-lg hover:bg-yellow-400 transition shadow-lg shadow-yellow-500/30 flex items-center justify-center hover:-translate-y-1">
                 {t.hero.apply} <ChevronRight size={20} className="ml-2" />
-              </button>
+              </ModalTriggerButton>
               <Link href={l('/training')} className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-4 rounded-xl font-bold text-lg transition flex items-center justify-center backdrop-blur-sm hover:-translate-y-1">
                 {t.hero.courses}
               </Link>
@@ -100,7 +76,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Benefits */}
+      {/* ── Benefits ───────────────────────────────────────────────── */}
       <RevealOnScroll>
         <section className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -110,10 +86,10 @@ export default function HomePage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {[
-                { icon: ShieldCheck, title: t.benefits.b1t, desc: t.benefits.b1d },
-                { icon: Banknote, title: t.benefits.b2t, desc: t.benefits.b2d },
-                { icon: MapPin, title: t.benefits.b3t, desc: t.benefits.b3d },
-                { icon: CheckCircle2, title: t.benefits.b4t, desc: t.benefits.b4d }
+                { icon: ShieldCheck,   title: t.benefits.b1t, desc: t.benefits.b1d },
+                { icon: Banknote,      title: t.benefits.b2t, desc: t.benefits.b2d },
+                { icon: MapPin,        title: t.benefits.b3t, desc: t.benefits.b3d },
+                { icon: CheckCircle2,  title: t.benefits.b4t, desc: t.benefits.b4d },
               ].map((feature, idx) => (
                 <div key={idx} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 hover:shadow-xl hover:-translate-y-2 transition duration-300">
                   <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center mb-4 text-yellow-600">
@@ -128,7 +104,7 @@ export default function HomePage() {
         </section>
       </RevealOnScroll>
 
-      {/* Vacancies Preview */}
+      {/* ── Vacancies Preview ──────────────────────────────────────── */}
       <RevealOnScroll>
         <section className="py-16 bg-slate-50" id="vacancies">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -207,7 +183,7 @@ export default function HomePage() {
         </section>
       </RevealOnScroll>
 
-      {/* Training Promo */}
+      {/* ── Training Promo ─────────────────────────────────────────── */}
       <RevealOnScroll>
         <section className="py-12 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -219,14 +195,12 @@ export default function HomePage() {
                     {t.trainingPromo.badge}
                   </div>
                   <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4 leading-tight group-hover:text-yellow-200 transition-colors">
-                    {t.trainingPromo.title1}<br/>{t.trainingPromo.title2}
+                    {t.trainingPromo.title1}<br />{t.trainingPromo.title2}
                   </h2>
-                  <p className="text-red-100 text-lg mb-6 max-w-xl">
-                    {t.trainingPromo.desc}
-                  </p>
+                  <p className="text-red-100 text-lg mb-6 max-w-xl">{t.trainingPromo.desc}</p>
                   <div className="flex flex-col sm:flex-row items-center gap-4">
                     <button className="w-full sm:w-auto bg-white text-red-800 font-bold px-8 py-3.5 rounded-xl transition shadow-lg flex items-center justify-center group-hover:bg-gray-100 group-hover:-translate-y-1">
-                      {t.trainingPromo.btn} <GraduationCap className="ml-2" size={20}/>
+                      {t.trainingPromo.btn} <GraduationCap className="ml-2" size={20} />
                     </button>
                   </div>
                 </div>
@@ -245,32 +219,32 @@ export default function HomePage() {
         </section>
       </RevealOnScroll>
 
-      {/* Blog Preview */}
+      {/* ── Blog Preview ───────────────────────────────────────────── */}
       <RevealOnScroll>
         <section className="py-16 bg-slate-50" id="blog">
-           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-             <div className="text-center mb-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-slate-900">{t.blog.title}</h2>
               <p className="mt-4 text-gray-600">{t.blog.desc}</p>
             </div>
-            
+
             {blogPosts.length === 0 ? (
               <div className="text-center text-gray-500 py-10">
-                <p>Статті ще не додано. Перейдіть в Адмін-панель.</p>
+                <p>Статті ще не додано.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {blogPosts.map((post) => (
                   <Link href={l(`/blog/${post.id}`)} key={post.id} className="bg-white rounded-2xl border border-gray-200 hover:border-yellow-500 hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group flex flex-col overflow-hidden">
                     <div className="h-48 overflow-hidden relative">
-                       <Image
-                       fill
-                       src={post.image}
-                       alt={getPostText(post, 'title')}
-                       className="object-cover transition-transform duration-700 group-hover:scale-110"
-                       sizes="(max-width: 768px) 100vw, 33vw"
-                     />
-                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <Image
+                        fill
+                        src={post.image}
+                        alt={getPostText(post, 'title', lang)}
+                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </div>
                     <div className="p-6 flex flex-col flex-grow">
                       <div>
@@ -281,13 +255,15 @@ export default function HomePage() {
                           </p>
                         </div>
                         <h3 className="text-lg font-bold text-slate-900 mb-3 group-hover:text-yellow-600 transition leading-snug">
-                          {getPostText(post, 'title') || 'Без заголовка'}
+                          {getPostText(post, 'title', lang) || 'Без заголовка'}
                         </h3>
                         <p className="text-sm text-gray-600 mb-4 line-clamp-3 leading-relaxed">
-                          {getPostText(post, 'excerpt') || 'Опис відсутній...'}
+                          {getPostText(post, 'excerpt', lang) || 'Опис відсутній...'}
                         </p>
                       </div>
-                      <p className="text-sm text-yellow-600 flex items-center font-bold mt-auto pt-4 border-t border-gray-50">{t.blog.read} <ChevronRight size={16} className="ml-1 group-hover:translate-x-2 transition-transform" /></p>
+                      <p className="text-sm text-yellow-600 flex items-center font-bold mt-auto pt-4 border-t border-gray-50">
+                        {t.blog.read} <ChevronRight size={16} className="ml-1 group-hover:translate-x-2 transition-transform" />
+                      </p>
                     </div>
                   </Link>
                 ))}
@@ -301,10 +277,10 @@ export default function HomePage() {
                 </Link>
               </div>
             )}
-
-           </div>
+          </div>
         </section>
       </RevealOnScroll>
+
     </div>
   );
 }

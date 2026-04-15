@@ -28,7 +28,7 @@ export async function generateMetadata({ params }) {
       title: t.seo.homeTitle,
       description: t.seo.homeDesc,
       url: canonicalUrl,
-      siteName: 'Zvaryuvalnyk.xyz',
+      siteName: 'ZVARYUVALNYK',
       type: 'website',
       locale: lang === 'uk' ? 'uk_UA' : lang === 'pl' ? 'pl_PL' : lang === 'ru' ? 'ru_RU' : 'en_US',
       images: [
@@ -56,6 +56,15 @@ export default async function LocaleLayout({ children, params }) {
       {/* GTM: script в <head> + noscript в <body> — без блокировки рендера */}
       <GoogleTagManager gtmId="GTM-WZLGT64Q" />
       <body>
+        {/* JSON-LD WebSite — Google показує назву бренду замість URL */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type':    'WebSite',
+          name:       'ZVARYUVALNYK',
+          url:        'https://zvaryuvalnyk.xyz',
+          description: (translations[lang] || translations['uk']).seo.homeDesc,
+          inLanguage:  lang,
+        }) }} />
         <GlobalWrapper>{children}</GlobalWrapper>
       </body>
     </html>

@@ -135,7 +135,7 @@ export default function GlobalWrapper({ children }) {
             <div className="flex justify-between items-center h-20">
               <Link href={l('/')} className="flex-shrink-0 flex items-center group">
                 <div className="w-10 h-10 bg-yellow-500 rounded-lg flex items-center justify-center mr-3 shadow-sm group-hover:bg-yellow-400 transition-colors"><HardHat className="text-black" size={24} /></div>
-                <span className="font-extrabold text-2xl tracking-tight text-slate-900 uppercase">ZVARYUVALNYK<span className="text-yellow-700 lowercase">.xyz</span></span>
+                <span className="font-extrabold text-2xl tracking-tight text-slate-900 uppercase">ZVARYUVALNYK</span>
               </Link>
 
               <nav className="hidden md:flex space-x-8">
@@ -183,7 +183,7 @@ export default function GlobalWrapper({ children }) {
               <div className="md:col-span-4 lg:col-span-5">
                 <div className="flex items-center mb-6">
                   <HardHat className="text-yellow-500 mr-2" size={28} />
-                  <span className="font-extrabold text-2xl tracking-tight text-white uppercase">ZVARYUVALNYK<span className="text-yellow-500 lowercase">.xyz</span></span>
+                  <span className="font-extrabold text-2xl tracking-tight text-white uppercase">ZVARYUVALNYK</span>
                 </div>
                 <p className="text-gray-400 leading-relaxed pr-4">{t.footer.desc}</p>
               </div>
@@ -206,7 +206,7 @@ export default function GlobalWrapper({ children }) {
               </div>
             </div>
             <div className="border-t border-slate-800 mt-16 pt-8 text-sm flex flex-col md:flex-row justify-between items-center">
-              <p className="mb-4 md:mb-0">&copy; 2026 Zvaryuvalnyk.xyz. {t.footer.rights}</p>
+              <p className="mb-4 md:mb-0">&copy; 2026 ZVARYUVALNYK. {t.footer.rights}</p>
               <div className="flex flex-col items-center md:items-end">
                 <a href="#" className="hover:text-white transition mb-2">{t.footer.privacy}</a>
               </div>
